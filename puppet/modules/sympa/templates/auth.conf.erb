@@ -1,0 +1,7 @@
+ldap
+	host localhost
+	suffix <%= scope.lookupvar('collabograte_common::ldap_basedn') %>
+	scope sub
+	get_dn_by_uid_filter (uid=[sender])
+    get_dn_by_email_filter (mail=[sender])
+    email_attribute mail

@@ -1,0 +1,11 @@
+/var/log/openldap/access {
+    weekly
+    rotate 12
+    notifempty
+    compress
+    delaycompress
+    sharedscripts
+    postrotate
+        pkill -HUP rsyslogd
+    endscript
+}

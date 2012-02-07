@@ -1,0 +1,46 @@
+# OpenLDAP Configuration
+
+include	/etc/openldap/schema/core.schema
+include	/etc/openldap/schema/cosine.schema
+include	/etc/openldap/schema/dyngroup.schema
+include	/etc/openldap/schema/inetorgperson.schema
+include	/etc/openldap/schema/nis.schema
+include	/etc/openldap/schema/ns-mail.schema
+
+pidfile	/var/run/openldap/slapd.pid
+argsfile /var/run/openldap/slapd.args
+sizelimit unlimited
+timelimit unlimited
+idletimeout 3600
+
+database monitor
+rootdn <%= scope.lookupvar('collabograte_common::ldap_rootdn') %>
+
+database bdb
+suffix <%= scope.lookupvar('collabograte_common::ldap_basedn') %>
+rootdn <%= scope.lookupvar('collabograte_common::ldap_rootdn') %>
+rootpw <%= scope.lookupvar('collabograte_common::ldap_rootpw') %>
+directory /var/lib/ldap
+cachesize 10000
+checkpoint 65536 10
+
+dbconfig set_cachesize 0 100000000 1
+dbconfig set_flags DB_LOG_AUTOREMOVE
+dbconfig set_lg_max 33554432
+dbconfig set_lk_max_objects 1500
+dbconfig set_lk_max_locks 1500
+dbconfig set_lk_max_lockers 1500
+
+access to attrs=userPassword
+    by self write
+	by anonymous auth
+	by * none
+
+access to *
+	by self write
+	by * read
+	by anonymous auth
+
+index objectClass,member,mgrprfc822mailmember,uidNumber,gidNumber eq
+index cn,mail,givenname,sn,ou eq,sub
+index uid eq,pres,sub

@@ -1,0 +1,49 @@
+text
+skipx
+lang en_US.UTF-8
+keyboard us
+timezone --utc America/New_York
+auth  --useshadow  --passalgo=md5
+selinux --disabled
+firewall --disabled
+zerombr
+bootloader --location=mbr
+rootpw $ROOT_PW
+reboot
+
+clearpart --all --initlabel 
+part / --asprimary --fstype=ext4 --grow --maxsize=$DISK_MB --size=1
+
+network  --onboot=on --bootproto=static --ip=$VM_IP --netmask=$VIRBR0_NETMASK --gateway=$VIRBR0_IP --nameserver $VIRBR0_IP
+services --enabled=network
+
+# Repositories
+url --url=http://mirrors.kernel.org/centos/$OS_RELEASE/os/$PLATFORM/
+repo --name=updates --baseurl=http://mirrors.kernel.org/centos/$OS_RELEASE/updates/$PLATFORM/
+repo --name=EPEL --baseurl=http://download.fedora.redhat.com/pub/epel/$OS_RELEASE/$PLATFORM/
+
+%packages --nobase --instLangs=en
+@Core
+epel-release
+man
+nc
+openssh-clients
+perl
+strace
+wget
+yum-plugin-fastestmirror
+zsh
+
+%post
+rpm -e $(rpm -qa \*firmware | grep -v kernel)
+yum -y remove audit authconfig checkpolicy libsemanage policycoreutils selinux-policy selinux-policy-targeted
+yum clean all
+rm -rf /etc/selinux/targeted
+
+echo "$VM_IP $VM_HOSTNAME" >> /etc/hosts
+/usr/sbin/useradd -g users -s /bin/zsh -c "Collabograte User" -m collabograte
+chmod 755 /home/collabograte
+echo collabograte | passwd --stdin $COLLABOGRATE_PW
+echo "collabograte ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+%end

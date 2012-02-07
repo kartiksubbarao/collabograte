@@ -1,0 +1,84 @@
+#! /usr/bin/perl
+
+# LDAP News to Mail Gateway
+
+use News::Article;
+use Net::LDAP;
+use Date::Parse;
+use Sys::Syslog qw(:DEFAULT setlogsock);
+use File::Basename;
+
+use strict;
+
+my $ldaphost = 'localhost';
+my $basedn = '<%= scope.lookupvar('collabograte_common::ldap_basedn') %>';
+my $domain = '<%= scope.lookupvar('collabograte_common::domain') %>';
+my $SM = '/usr/libexec/news/sm';
+my $debug = 0;
+
+setlogsock('unix');
+openlog(basename($0), 'pid', 'mail');
+
+while (<>) {
+	chomp;
+	my $articlestr = `$SM $_`;
+	mail_article(\$articlestr);
+}
+
+exit;
+
+
+sub mail_article
+{
+	my $articleref = shift;
+	my $article = News::Article->new($articleref);
+
+	if ($debug) {
+		open(DEBUG, "> /tmp/ldapn2m.$$");
+		$article->write(*DEBUG);
+		close(DEBUG);
+	}
+
+	# If an article came to us in email, don't send it back. Check for
+	# headers that show up in email message, but not in direct NNTP postings.
+	exit if $article->header('To') 
+		 || $article->header('Cc')
+		 || $article->header('Delivered-To');
+
+	my $mesgid = $article->header('Message-ID');
+	my $article_date = $article->header('Date');
+	my $article_time = str2time($article_date);
+	if (!$article_time) {
+		syslog('err', "Could not determine time for article $mesgid");
+		exit 1;
+	}
+	my $now = time;
+	# Drop articles older than 1 day. This helps protect against old
+	# news articles being sent back out to mailing lists.
+	if ($now - $article_time > 24*60*60) {
+		syslog('warning', "Dropping old article $mesgid [$article_date]\n");
+		exit 1;
+	}
+
+	my $ldap = Net::LDAP->new($ldaphost) or die "$ldaphost: $@\n";
+
+	my @newsgroups = split(/,/, $article->header('Newsgroups'));
+
+	# Look up the email address of the newsgroup
+	foreach my $newsgroup (@newsgroups) {
+		my $mesg = $ldap->search(base => $basedn,
+			 filter => "(mgrpRFC822MailMember=$newsgroup\@news.$domain)",
+			 attrs => [qw(mail mgrpAddHeader)]);
+		my $entry = $mesg->entry(0);
+		next unless $entry;
+		my $addr = $entry->get_value('mail');
+		$article->add_headers('To' => $addr) if $addr;
+		# Direct responses to the newsgroup address, not to the poster
+		$article->add_headers('Reply-To' => $addr)
+			if $addr
+			&& !grep(/^Reply-To:/i, $entry->get_value('mgrpAddHeader'));
+			# Skip this if there's already an explicit Reply-To specified
+	}
+
+	$article->mail() if $article->header('To');
+}

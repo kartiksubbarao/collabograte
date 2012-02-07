@@ -1,0 +1,9 @@
+include_ldap_2level_query
+host localhost
+suffix1 <%= scope.lookupvar('collabograte_common::ldap_basedn') %>
+filter1 (mail=[% param.0 %]@lists.<%= scope.lookupvar('collabograte_common::domain') %>)
+attrs1 owner
+select1 all
+suffix2 [attrs1]
+filter2 (objectclass=*)
+attrs2 mail

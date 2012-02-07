@@ -1,0 +1,61 @@
+subject [% subject %]
+
+status [% status %]
+
+[% IF topics -%]
+topics [% topics %]
+[% END %]
+
+visibility noconceal
+
+send intranet
+
+web_archive
+  access public
+
+reply_to_header
+value all
+
+subscribe closed
+
+unsubscribe closed
+
+review owner
+
+invite default
+
+digest 3 4:36
+
+shared_doc
+d_edit default
+d_read public
+
+owner_include
+source owner_ldap
+source_parameters [% listname %]
+
+include_ldap_2level_query
+host localhost
+suffix1 <%= scope.lookupvar('collabograte_common::ldap_basedn') %>
+filter1 (mail=[% listname %]@lists.<%= scope.lookupvar('collabograte_common::domain') %>)
+attrs1 member
+select1 all
+suffix2 [attrs1]
+filter2 (objectclass=*)
+attrs2 mail
+
+include_ldap_query
+host localhost
+suffix <%= scope.lookupvar('collabograte_common::ldap_basedn') %>
+filter (mail=[% listname %]@lists.<%= scope.lookupvar('collabograte_common::domain') %>)
+attrs mgrpRFC822MailMember
+select all
+
+creation
+  date [% creation.date %]
+  date_epoch [% creation.date_epoch %]
+[% IF creation_email -%]
+  email [% creation_email %]
+[% END %]
+
+serial 0

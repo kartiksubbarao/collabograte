@@ -1,0 +1,6 @@
+[%|loc%]LDAP Directory - Private[%END%]
+<ul>
+<li>[%|loc%]Owners manage list membership in the LDAP Directory[%END%]</li>
+<li>[%|loc%]Only list members can send messages or view archives[%END%]</li>
+</ul>
+</dd></dl>

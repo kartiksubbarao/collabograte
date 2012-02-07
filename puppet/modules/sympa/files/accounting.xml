@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<list>
+    <listname>accounting</listname>
+    <type>ldap-public</type>
+    <subject>accounting</subject>
+    <status>open</status>
+    <owner_include multiple="1">
+        <source>owner_ldap</source>
+        <source_parameters>accounting</source_parameters>
+    </owner_include>
+</list>

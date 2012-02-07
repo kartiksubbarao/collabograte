@@ -1,0 +1,59 @@
+Collabograte: An Integration Platform for Collaboration Components
+
+Overview
+========
+
+Collabograte helps you integrate collaboration components in your IT 
+environment. Currently, it supports the following software packages:
+
+Cyrus IMAP
+ejabberd
+INN
+MediaWiki
+OpenLDAP
+Postfix
+Sympa
+WordPress
+
+Collabograte provides a reference virtual machine implementation that 
+includes all of the above software packages configured with a number of
+integration points. Example: OpenLDAP stores groups of users which are used
+as the source of membership for Sympa mailing lists, whose messages are
+bidirectionally gatewayed to INN newsgroups).
+
+Additional packages (including multiple packages for the same category of 
+software) are welcome -- the goal is to be able to mix and match any number of 
+combinations that people find to be useful.
+
+Currently, Collabograte supports CentOS/RHEL as the target OS platform,
+uses KVM as the virtual machine technology, and Puppet as the primary toolset 
+for application configuration. Here too, additional options are encouraged and
+can be added based on demand.
+
+
+Documentation
+=============
+
+The wiki contains the project documentation. For detailed installation 
+instructions, see the INSTALL page in the wiki:
+
+https://github.com/kartiksubbarao/collabograte/wiki/INSTALL
+
+
+Community
+=========
+
+In addition to being a nexus for integration implementations that anyone can 
+build on, Collabograte is also a vehicle for communicating integration-related 
+feedback to the upstream projects and OS distributions. For example: the RPM 
+for a software package can be improved to be more integration-friendly; or 
+entirely new features can be added to a software package to make it a better 
+integration bridge between other components. Collabograte provides a focal 
+point for that kind of advocacy and contribution.
+
+
+License
+=======
+
+Collabograte is Open Source software licensed under the FreeBSD license. See 
+LICENSE for more information.

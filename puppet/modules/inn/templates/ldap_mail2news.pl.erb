@@ -1,0 +1,130 @@
+#! /usr/bin/perl
+
+# LDAP Mail to News Gateway.
+
+use News::Gateway;
+use Mail::Address;
+use Net::LDAP;
+use Net::NNTP;
+
+use strict;
+
+my $newshost = 'localhost';
+my $ldaphost = 'localhost';
+my $basedn = '<%= scope.lookupvar('collabograte_common::ldap_basedn') %>';
+my $domain = '<%= scope.lookupvar('collabograte_common::domain') %>';
+my $debug = $ARGV[0] eq '-d';
+
+# Maximum header size accepted by News Server. 
+my $MAXHEADERSIZE = 1024; 
+
+my $TEMPFAIL = 75;
+
+my $gateway = News::Gateway->new(0, "news\@$newshost");
+$gateway->modules(mailtonews => ['x']); # dummy placeholder
+$gateway->read(\*STDIN, 0xffffffff, 0xffffffff); # Unlimit message size
+my $error;
+$error = $gateway->apply() and warn("$error\n"), exit $TEMPFAIL;
+my $article = $gateway->get_article();
+my (@newsgroups, %ldaplistaddrs);
+
+# Drop the message if it comes from a news server (e.g., Messages directly 
+# posted to a newsgroup, then sent by the news to mail gateway to its
+# corresponding mailing list, whose mail to news gateway is handled by this 
+# script).
+exit if $article->header('Path');
+
+$article->drop_headers('Newsgroups'); # drop dummy placeholder
+
+my $ldap = Net::LDAP->new($ldaphost) or warn("$ldaphost: $@\n"),exit $TEMPFAIL;
+
+# Go through all of the target addresses and add any that map to newsgroups
+# to the Newsgroups: field.
+
+foreach my $header ('To', 'Cc') {
+	# Generate list of addresses from raw field
+	foreach my $addr (map($_->address, Mail::Address->parse($article->header($header)))) {
+		# Mailing list gateway defined in LDAP
+		# e.g. mail is addressed to xyz@lists.example.com. The LDAP entry 
+		# whose mail: attribute is xyz@lists.example.com has an 
+		# mgrprfc822mailmember: attribute of example.xyz@news.example.com
+		if ($addr =~ /\@lists.$domain$/i) {
+			my $mesg = $ldap->search(base => $basedn, 
+								  filter => "(mail=$addr)", 
+								  attrs => ['mgrpRFC822MailMember']);
+			my $addrentry = $mesg->entry(0);
+			next unless $addrentry;
+
+			foreach my $maddr ($addrentry->get_value('mgrpRFC822MailMember')) {
+				if ($maddr =~ /^(.*)\@news.$domain$/i) {
+					my $newsgroup = lc($1);
+					push @newsgroups, $newsgroup;
+					$ldaplistaddrs{$addr} = $header;
+				}
+			}
+		}
+
+		# In case the message is sent directly to a newsgroup address.
+		# e.g. example.xyz@news.example.com
+		$addr =~ /(.*)\@news.$domain$/i and push(@newsgroups, lc($1));
+	}
+}
+
+# If we didn't see any newsgroup addresses in To or Cc, it's possible that 
+# the message was sent using Bcc. See if we can glean any newsgroup
+# addresses from the Delivered-To header.
+unless (@newsgroups) {
+	my $deliveredto = $article->header('Delivered-To');
+	# e.g. mail2news+example.xyz@news.example.com
+	my $newsgroup = ($deliveredto =~ m/\+(.*)@/)[0];
+	push(@newsgroups, $newsgroup) if $newsgroup;
+}
+
+# If a given header is greater than MAXHEADERSIZE, torch it by deleting all 
+# non-newsgroup addresses. Another option would have been to truncate it 
+# "nicely" somehow, or perhaps even increase the MAXHEADERSIZE parameter on 
+# our news server. The problem with the latter approach is that downstream 
+# news servers configured with the default value would reject the article. 
+
+foreach my $dest ('To', 'Cc') {
+	my @ngaddrs;
+	my $hstr = $article->header($dest);
+	if (length($hstr) > $MAXHEADERSIZE) {
+		foreach my $addr (map($_->address, Mail::Address->parse($article->header($dest)))) {
+			push(@ngaddrs, $addr)
+				if $addr =~ /\@news.$domain$/i || $ldaplistaddrs{$addr};
+		}
+		$article->set_headers($dest, @ngaddrs
+			? join(', ', @ngaddrs) : '(Long header omitted)');
+	}
+}
+
+
+# Set Newsgroups: field
+my $ngstr = join(',', @newsgroups);
+$article->set_headers('Newsgroups', $ngstr);
+
+if ($debug) { 
+	umask 022;
+	open(ART, "> /tmp/ldapm2n.$$");
+	$article->write(\*ART);
+	#exit;
+}
+
+my $port = 119;
+
+### should we just exit if no newsgroups are specified?
+
+my $nntp = Net::NNTP->new($newshost, Port => $port)
+	or warn("Could not connect to NNTP server $newshost\n"), exit $TEMPFAIL;
+
+# Check if the message already exists on the NNTP server. If so, just exit.
+exit if $nntp->nntpstat($article->header('Message-ID'));
+
+# Post the Message
+
+### $gateway->post() doesn't pass the news server name
+# $error = $gateway->post($newshost) and warn("$error\n"), exit $TEMPFAIL;
+
+eval { $article->post($nntp) };
+if ($@) { my $error = $@; chomp $error; warn("$error\n"); exit $TEMPFAIL }
