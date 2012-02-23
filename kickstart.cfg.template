@@ -43,7 +43,7 @@ rm -rf /etc/selinux/targeted
 echo "$VM_IP $VM_HOSTNAME" >> /etc/hosts
 /usr/sbin/useradd -g users -s /bin/zsh -c "Collabograte User" -m collabograte
 chmod 755 /home/collabograte
-echo collabograte | passwd --stdin $COLLABOGRATE_PW
+echo $COLLABOGRATE_PW | passwd --stdin collabograte
 echo "collabograte ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 %end
