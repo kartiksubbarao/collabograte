@@ -1,0 +1,8 @@
+domain = <%= scope.lookupvar('collabograte_common::domain') %>
+server_host = ldap://localhost
+search_base = <%= scope.lookupvar('collabograte_common::ldap_basedn') %>
+query_filter = (mail=%s)
+version = 3
+bind = no
+result_attribute = mail
+

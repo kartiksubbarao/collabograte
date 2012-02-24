@@ -48,11 +48,16 @@ file { "/etc/imapd.conf":
 augeas { "cyrusimap_postfix_main":
 	context => "/files/etc/postfix/main.cf",
 	changes => [
-		'clear local_recipient_maps',
+		'set local_recipient_maps "proxy:unix:passwd.byname, $alias_maps, ldap:$config_directory/ldap-local.cf"',
 		'set fallback_transport lmtp:unix:/var/lib/imap/socket/lmtp',
 	],
 	notify => Service["postfix"],
 	onlyif => "match fallback_transport size == 0"
+}
+
+file { "/etc/postfix/ldap-local.cf":
+	content => template("cyrusimap/ldap-local.cf.erb"),
+	notify => Service["postfix"]
 }
 
 file { "/etc/sysconfig/saslauthd":
