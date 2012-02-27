@@ -20,7 +20,7 @@ services --enabled=network
 # Repositories
 url --url=http://mirrors.kernel.org/centos/$OS_RELEASE/os/$PLATFORM/
 repo --name=updates --baseurl=http://mirrors.kernel.org/centos/$OS_RELEASE/updates/$PLATFORM/
-repo --name=EPEL --baseurl=http://download.fedora.redhat.com/pub/epel/$OS_RELEASE/$PLATFORM/
+repo --name=EPEL --baseurl=http://mirrors.kernel.org/fedora-epel/$OS_RELEASE/$PLATFORM/
 
 %packages --nobase --instLangs=en
 @Core
